@@ -9,6 +9,7 @@
 
 library(shiny)
 library(vcfR)
+library(tidyr)
 library(ggplot2)
 library(scales)
 library(VariantAnnotation)
@@ -46,18 +47,20 @@ ui <- fluidPage(
                      verbatimTextOutput("n_vars", placeholder = TRUE)
                  ),
                  mainPanel(
-                     plotOutput("QCPlot")))),
+                    plotOutput("QCPlot")
+                   ))),
         tabPanel("Visualise Distribution of Variants",
-            sidebarLayout(
-                sidebarPanel(
-                    selectInput("chr", "Choose a chromosome", c('All', seq(1:22), 'X', 'Y'), selected = 'All' ),
-                    tags$hr(),
-                    h5(tags$b("Number of Variants")),
-                    verbatimTextOutput("n_vars", placeholder = TRUE)
-                    ),
-                mainPanel(
-                    plotOutput("karyoPlot"))
-    ))
+            #sidebarLayout(
+                #sidebarPanel(
+                    #selectInput("chr", "Choose a chromosome", c('All', seq(1:22), 'X', 'Y'), selected = 'All' ),
+                    #tags$hr(),
+                    #h5(tags$b("Number of Variants")),
+                    #verbatimTextOutput("n_vars", placeholder = TRUE)
+                    #),
+                #mainPanel(
+                    plotOutput("karyoPlot")
+            #))
+            )
 ))
 
 # Define server logic required to draw a histogram
@@ -96,17 +99,18 @@ server <- function(input, output) {
             title(main = paste('Distribution of variants on chromosome', input$chr))
             }
     })
-   # output$QCPlot <- renderPlot({
-    #    qc_info <- data.frame(QUAL = dataInput()@fixed$QUAL, DP = dataInput()@info$DP, 
-     #                         MQ = dataInput()@info$MQ, stringsAsFactors = F)
-      #  qc_info <- gather(qc_info, measure)
-       # ggplot(qc_info, aes(x = value, col = measure)) +
-        #    geom_histogram(show.legend = F) +
-         #   facet_wrap(~measure, scales = 'free') +
-          #  labs(title = 'Distribution of QC metrics', x = 'Score', y = 'Count') +
-           # theme_linedraw() +
-            #theme(axis.text.x = element_text(angle = 90))
-    #})
+    output$QCPlot <- renderPlot({
+        qc_info <- data.frame(QUAL = dataInput()@fixed$QUAL, DP = dataInput()@info$DP, 
+                              MQ = dataInput()@info$MQ, stringsAsFactors = F)
+        qc_info <- gather(qc_info, measure)
+        ggplot(qc_info, aes(x = value, col = measure, fill = measure)) +
+            geom_histogram(show.legend = F, alpha = 0.4) +
+            facet_wrap(~measure, scales = 'free') +
+            labs(title = 'Distribution of QC metrics', x = 'Score', y = 'Count') +
+            theme_linedraw() +
+            theme(axis.text.x = element_text(angle = 90))
+    })
+    
     output$n_vars <- renderText({
             nrow(dataInput())
         })
