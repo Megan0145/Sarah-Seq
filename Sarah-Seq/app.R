@@ -43,6 +43,13 @@ ui <- fluidPage(
                  sidebarPanel(
                      selectInput("chr", "Choose a chromosome", c('All', seq(1:22), 'X', 'Y'), selected = 'All' ),
                      tags$hr(),
+                     h4(tags$b("Filtering")),
+                     h5("Include variants that have:"),
+                     sliderInput("mq_fil", "Mapping quality scores between", min = 1, max = 60, value = c(1,60), step = 1),
+                     sliderInput("dp_fil", "Read depth scores between", min = 1, max = 7000, value = c(1,7000), step = 1),
+                     sliderInput("qual_fil", "Quality scores between", min = 1, max = 250000, value = c(1, 250000)),
+                     actionButton("filter", "Filter"),
+                     tags$hr(),
                      h5(tags$b("Number of Variants")),
                      verbatimTextOutput("n_vars", placeholder = TRUE)
                  ),
@@ -79,10 +86,10 @@ server <- function(input, output) {
             data <- subset(vcfInput(), vcfInput()@rowRanges@seqnames == paste('chr', input$chr, sep = ""))
         }
     })
-   
+    
     output$success <- renderText({
         req(input$file1)
-        print(paste("File with ", nrow(vcfInput()), " variants from ", rownames(vcfInput()@colData), " successfully uploaded!"))
+        print(paste("File with ",nrow(vcfInput()), " variants from ", rownames(vcfInput()@colData), " successfully uploaded!"))
     })    
     
     output$karyoPlot <- renderPlot({
@@ -104,7 +111,7 @@ server <- function(input, output) {
                               MQ = dataInput()@info$MQ, stringsAsFactors = F)
         qc_info <- gather(qc_info, measure)
         ggplot(qc_info, aes(x = value, col = measure, fill = measure)) +
-            geom_histogram(show.legend = F, alpha = 0.4) +
+            geom_histogram(show.legend = F, alpha = 0.4, bins = 50) +
             facet_wrap(~measure, scales = 'free') +
             labs(title = 'Distribution of QC metrics', x = 'Score', y = 'Count') +
             theme_linedraw() +
