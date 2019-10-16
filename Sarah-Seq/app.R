@@ -42,14 +42,14 @@ ui <- fluidPage(
                            style = "border: 8px double white;",
                            img(src='michael.gif', align = "center", border = "5cm"),
                            tags$hr(),
-                    verbatimTextOutput("success", placeholder = F)))
+                           verbatimTextOutput("success", placeholder = F)))
     ))
     ,
         tabPanel("QC",
              sidebarLayout(
                  sidebarPanel(
                      selectInput("chr", "Choose a chromosome", c('All', seq(1:22), 'X', 'Y'), selected = 'All' ),
-                     h5(tags$b("Number of Variants")),
+                     h5(tags$b("Number of variants")),
                      verbatimTextOutput("n_vars", placeholder = TRUE),
                      tags$hr(),
                      h4(tags$b("Filtering")),
@@ -57,28 +57,22 @@ ui <- fluidPage(
                      sliderInput("mq_fil", "Mapping quality scores between", min = 1, max = 60, value = c(1,60), step = 1),
                      sliderInput("dp_fil", "Read depth scores between", min = 1, max = 7000, value = c(1,7000), step = 1),
                      sliderInput("qual_fil", "Quality scores between", min = 1, max = 250000, value = c(1, 250000)),
-                     actionButton("filter", "Filter")
+                     tags$hr(),
+                     fluidRow(align = 'center',
+                     actionButton("filter", tags$b("Update View")))
                  ),
                  mainPanel(
                    h4(tags$b("QC statistics:")),
                    tableOutput("qc_stats"),
                    tags$hr(),
+                   h4(tags$b("QC plots:")),
                    plotOutput("QCPlot")
                    ))),
         tabPanel("Visualise Distribution of Variants",
-            #sidebarLayout(
-                #sidebarPanel(
-                    #selectInput("chr", "Choose a chromosome", c('All', seq(1:22), 'X', 'Y'), selected = 'All' ),
-                    #tags$hr(),
-                    #h5(tags$b("Number of Variants")),
-                    #verbatimTextOutput("n_vars", placeholder = TRUE)
-                    #),
-                #mainPanel(
                     plotOutput("karyoPlot")),
         tabPanel("PRS"),
         tabPanel("Ancestry"),
         tabPanel("Mitochondrial Genome")
-            #))
             
 ))
 
@@ -90,14 +84,19 @@ server <- function(input, output) {
         vcf    <- readVcf(input$file1$datapath)
         
     })
-    dataInput <- reactive({
+    dataInput <- eventReactive(
+        input$filter,{
         if(input$chr == 'All'){
-            data <- vcfInput()
+            predata <- vcfInput()
         } 
         else{
-            data <- subset(vcfInput(), vcfInput()@rowRanges@seqnames == paste('chr', input$chr, sep = ""))
+            predata <- subset(vcfInput(), vcfInput()@rowRanges@seqnames == paste('chr', input$chr, sep = ""))
+            
         }
-    })
+      data <- subset(predata, predata@info$MQ >= input$mq_fil[1] & predata@info$MQ <= input$mq_fil[2]
+                              & predata@info$DP >= input$dp_fil[1] & predata@info$DP <= input$dp_fil[2]
+                              & predata@fixed$QUAL >= input$qual_fil[1] & predata@fixed$QUAL <= input$qual_fil[2])
+    }, ignoreNULL = F)
     
     output$success <- renderText({
         req(input$file1)
