@@ -17,9 +17,11 @@ library(matrixStats)
 library(karyoploteR)
 # Define UI for application that draws a histogram
 ui <- fluidPage(
-
     # Application title
-    titlePanel("Sarah-Seq"),
+    h1(id ='title', "Sarah-Seq"),
+    tags$style(HTML("@import url('//fonts.googleapis.com/css?family=Lobster|Cabin:400,700');
+                    #title{color: #3588b8;
+                    font-family: 'Lobster', cursive;}")),
 
     # Sidebar with a slider input for number of bins 
     tabsetPanel(
@@ -33,28 +35,35 @@ ui <- fluidPage(
                     tags$hr(),
                     radioButtons("assem", "Choose an assembly", c('hg38', 'hg19'), selected = 'hg38'),
                     tags$hr()
-        )
+                )
         , 
                 mainPanel(
-                    verbatimTextOutput("success", placeholder = F))
-    )),
+                  fluidRow(align = 'center',
+                           style = "border: 8px double white;",
+                           img(src='michael.gif', align = "center", border = "5cm"),
+                           tags$hr(),
+                    verbatimTextOutput("success", placeholder = F)))
+    ))
+    ,
         tabPanel("QC",
              sidebarLayout(
                  sidebarPanel(
                      selectInput("chr", "Choose a chromosome", c('All', seq(1:22), 'X', 'Y'), selected = 'All' ),
+                     h5(tags$b("Number of Variants")),
+                     verbatimTextOutput("n_vars", placeholder = TRUE),
                      tags$hr(),
                      h4(tags$b("Filtering")),
                      h5("Include variants that have:"),
                      sliderInput("mq_fil", "Mapping quality scores between", min = 1, max = 60, value = c(1,60), step = 1),
                      sliderInput("dp_fil", "Read depth scores between", min = 1, max = 7000, value = c(1,7000), step = 1),
                      sliderInput("qual_fil", "Quality scores between", min = 1, max = 250000, value = c(1, 250000)),
-                     actionButton("filter", "Filter"),
-                     tags$hr(),
-                     h5(tags$b("Number of Variants")),
-                     verbatimTextOutput("n_vars", placeholder = TRUE)
+                     actionButton("filter", "Filter")
                  ),
                  mainPanel(
-                    plotOutput("QCPlot")
+                   h4(tags$b("QC statistics:")),
+                   tableOutput("qc_stats"),
+                   tags$hr(),
+                   plotOutput("QCPlot")
                    ))),
         tabPanel("Visualise Distribution of Variants",
             #sidebarLayout(
@@ -65,9 +74,12 @@ ui <- fluidPage(
                     #verbatimTextOutput("n_vars", placeholder = TRUE)
                     #),
                 #mainPanel(
-                    plotOutput("karyoPlot")
+                    plotOutput("karyoPlot")),
+        tabPanel("PRS"),
+        tabPanel("Ancestry"),
+        tabPanel("Mitochondrial Genome")
             #))
-            )
+            
 ))
 
 # Define server logic required to draw a histogram
@@ -106,10 +118,10 @@ server <- function(input, output) {
             title(main = paste('Distribution of variants on chromosome', input$chr))
             }
     })
+    qcInfo <- reactive({qc_info <- data.frame(DP = dataInput()@info$DP, MQ = dataInput()@info$MQ,
+                                              QUAL = dataInput()@fixed$QUAL,  stringsAsFactors = F)})
     output$QCPlot <- renderPlot({
-        qc_info <- data.frame(QUAL = dataInput()@fixed$QUAL, DP = dataInput()@info$DP, 
-                              MQ = dataInput()@info$MQ, stringsAsFactors = F)
-        qc_info <- gather(qc_info, measure)
+        qc_info <- gather(qcInfo(), measure)
         ggplot(qc_info, aes(x = value, col = measure, fill = measure)) +
             geom_histogram(show.legend = F, alpha = 0.4, bins = 50) +
             facet_wrap(~measure, scales = 'free') +
@@ -121,6 +133,8 @@ server <- function(input, output) {
     output$n_vars <- renderText({
             nrow(dataInput())
         })
+    output$qc_stats <- renderTable(rownames = T,{
+      do.call(cbind, lapply(qcInfo(), summary)) })
 }
 
 # Run the application 
